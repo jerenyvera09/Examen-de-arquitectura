@@ -10,26 +10,34 @@
 
 -- Deshabilitar RLS temporalmente
 DO $$
+DECLARE
+  plantilla_rls TEXT := 'ALTER TABLE %I DISABLE ROW LEVEL SECURITY';
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'daily_logs') THEN
-    EXECUTE 'ALTER TABLE daily_logs DISABLE ROW LEVEL SECURITY';
+    EXECUTE format(plantilla_rls, 'daily_logs');
   END IF;
+
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_child_relations') THEN
-    EXECUTE 'ALTER TABLE user_child_relations DISABLE ROW LEVEL SECURITY';
+    EXECUTE format(plantilla_rls, 'user_child_relations');
   END IF;
+
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'children') THEN
-    EXECUTE 'ALTER TABLE children DISABLE ROW LEVEL SECURITY';
+    EXECUTE format(plantilla_rls, 'children');
   END IF;
+
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'profiles') THEN
-    EXECUTE 'ALTER TABLE profiles DISABLE ROW LEVEL SECURITY';
+    EXECUTE format(plantilla_rls, 'profiles');
   END IF;
+
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'categories') THEN
-    EXECUTE 'ALTER TABLE categories DISABLE ROW LEVEL SECURITY';
+    EXECUTE format(plantilla_rls, 'categories');
   END IF;
+
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_logs') THEN
-    EXECUTE 'ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY';
+    EXECUTE format(plantilla_rls, 'audit_logs');
   END IF;
 END $$;
+
 
 -- Eliminar vistas
 DROP VIEW IF EXISTS user_accessible_children CASCADE;
