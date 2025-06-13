@@ -16,23 +16,18 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'daily_logs') THEN
     EXECUTE format(plantilla_rls, 'daily_logs');
   END IF;
-
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_child_relations') THEN
     EXECUTE format(plantilla_rls, 'user_child_relations');
   END IF;
-
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'children') THEN
     EXECUTE format(plantilla_rls, 'children');
   END IF;
-
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'profiles') THEN
     EXECUTE format(plantilla_rls, 'profiles');
   END IF;
-
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'categories') THEN
     EXECUTE format(plantilla_rls, 'categories');
   END IF;
-
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_logs') THEN
     EXECUTE format(plantilla_rls, 'audit_logs');
   END IF;
@@ -351,7 +346,7 @@ BEGIN
   );
 EXCEPTION
   WHEN OTHERS THEN
-    NULL; -- No fallar por errores de auditoría
+    RAISE NOTICE 'Error en auditoría: %', SQLERRM; -- No fallar por errores de auditoría
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -374,7 +369,7 @@ SELECT
 FROM children c
 JOIN profiles p ON c.created_by = p.id
 WHERE c.created_by = auth.uid()
-  AND c.is_active = true;
+  AND c.is_active;
 
 -- Vista para estadísticas de logs por niño
 CREATE OR REPLACE VIEW child_log_statistics AS
@@ -487,7 +482,7 @@ CREATE POLICY "Users can update own logs" ON daily_logs
 
 -- POLÍTICAS PARA CATEGORIES
 CREATE POLICY "Authenticated users can view categories" ON categories
-  FOR SELECT USING (auth.uid() IS NOT NULL AND is_active = true);
+  FOR SELECT USING (auth.uid() IS NOT NULL AND is_active);
 
 -- POLÍTICAS PARA AUDIT_LOGS
 CREATE POLICY "System can insert audit logs" ON audit_logs
@@ -530,7 +525,7 @@ BEGIN
   
   -- Contar categorías
   SELECT COUNT(*) INTO category_count
-  FROM categories WHERE is_active = true;
+  FROM categories WHERE is_active;
   
   result := result || 'Categorías: ' || category_count || '/10' || E'\n';
   
