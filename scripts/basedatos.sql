@@ -1,3 +1,14 @@
+
+-- Declaración de constantes
+\set DAILY_LOGS :DAILY_LOGS
+\set USER_CHILD_RELATIONS :USER_CHILD_RELATIONS
+\set CHILDREN :CHILDREN
+\set PROFILES :PROFILES
+\set CATEGORIES :CATEGORIES
+\set AUDIT_LOGS :AUDIT_LOGS
+\set PUBLIC_SCHEMA :PUBLIC_SCHEMA
+\set DEFAULT_ROLE :DEFAULT_ROLE
+\set DEFAULT_INTENSITY :DEFAULT_INTENSITY
 -- ================================================================
 -- NEUROLOG APP - SCRIPT COMPLETO DE BASE DE DATOS
 -- ================================================================
@@ -10,29 +21,26 @@
 
 -- Deshabilitar RLS temporalmente
 DO $$
-DECLARE
-  plantilla_rls TEXT := 'ALTER TABLE %I DISABLE ROW LEVEL SECURITY';
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'daily_logs') THEN
-    EXECUTE format(plantilla_rls, 'daily_logs');
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :DAILY_LOGS) THEN
+    EXECUTE 'ALTER TABLE daily_logs DISABLE ROW LEVEL SECURITY';
   END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_child_relations') THEN
-    EXECUTE format(plantilla_rls, 'user_child_relations');
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :USER_CHILD_RELATIONS) THEN
+    EXECUTE 'ALTER TABLE user_child_relations DISABLE ROW LEVEL SECURITY';
   END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'children') THEN
-    EXECUTE format(plantilla_rls, 'children');
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :CHILDREN) THEN
+    EXECUTE 'ALTER TABLE children DISABLE ROW LEVEL SECURITY';
   END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'profiles') THEN
-    EXECUTE format(plantilla_rls, 'profiles');
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :PROFILES) THEN
+    EXECUTE 'ALTER TABLE profiles DISABLE ROW LEVEL SECURITY';
   END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'categories') THEN
-    EXECUTE format(plantilla_rls, 'categories');
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :CATEGORIES) THEN
+    EXECUTE 'ALTER TABLE categories DISABLE ROW LEVEL SECURITY';
   END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_logs') THEN
-    EXECUTE format(plantilla_rls, 'audit_logs');
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :AUDIT_LOGS) THEN
+    EXECUTE 'ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY';
   END IF;
 END $$;
-
 
 -- Eliminar vistas
 DROP VIEW IF EXISTS user_accessible_children CASCADE;
@@ -67,7 +75,7 @@ DROP TABLE IF EXISTS profiles CASCADE;
 -- TABLA: profiles (usuarios del sistema)
 DO $$
 DECLARE
-  rol_default TEXT := 'parent';
+  rol_default TEXT := :DEFAULT_ROLE;
 BEGIN
   EXECUTE '
     CREATE TABLE profiles (
@@ -138,7 +146,7 @@ CREATE TABLE user_child_relations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   child_id UUID REFERENCES children(id) ON DELETE CASCADE NOT NULL,
-  relationship_type TEXT CHECK (relationship_type IN ('parent', 'teacher', 'specialist', 'observer', 'family')) NOT NULL,
+  relationship_type TEXT CHECK (relationship_type IN (:DEFAULT_ROLE, 'teacher', 'specialist', 'observer', 'family')) NOT NULL,
   can_edit BOOLEAN DEFAULT FALSE,
   can_view BOOLEAN DEFAULT TRUE,
   can_export BOOLEAN DEFAULT FALSE,
@@ -162,7 +170,7 @@ CREATE TABLE daily_logs (
   title TEXT NOT NULL CHECK (length(trim(title)) >= 2),
   content TEXT NOT NULL,
   mood_score INTEGER CHECK (mood_score >= 1 AND mood_score <= 10),
-  intensity_level TEXT CHECK (intensity_level IN ('low', 'medium', 'high')) DEFAULT 'medium',
+  intensity_level TEXT CHECK (intensity_level IN ('low', :DEFAULT_INTENSITY, 'high')) DEFAULT :DEFAULT_INTENSITY,
   logged_by UUID REFERENCES profiles(id) NOT NULL,
   log_date DATE DEFAULT CURRENT_DATE,
   is_private BOOLEAN DEFAULT FALSE,
@@ -196,7 +204,7 @@ CREATE TABLE audit_logs (
   ip_address INET,
   user_agent TEXT,
   session_id TEXT,
-  risk_level TEXT CHECK (risk_level IN ('low', 'medium', 'high', 'critical')) DEFAULT 'low',
+  risk_level TEXT CHECK (risk_level IN ('low', :DEFAULT_INTENSITY, 'high', 'critical')) DEFAULT 'low',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -246,20 +254,17 @@ $$ LANGUAGE plpgsql;
 -- Función para crear perfil automáticamente cuando se registra usuario
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
-DECLARE
-  rol_default TEXT := 'parent';
 BEGIN
   INSERT INTO profiles (id, email, full_name, role)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-    COALESCE(NEW.raw_user_meta_data->>'role', rol_default)
+    COALESCE(NEW.raw_user_meta_data->>'role', :DEFAULT_ROLE)
   );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 
 -- ================================================================
 -- 5. CREAR TRIGGERS
@@ -342,11 +347,11 @@ BEGIN
       'details', action_details,
       'timestamp', NOW()
     ),
-    'medium'
+    :DEFAULT_INTENSITY
   );
 EXCEPTION
   WHEN OTHERS THEN
-    RAISE NOTICE 'Error en auditoría: %', SQLERRM; -- No fallar por errores de auditoría
+    NULL; -- No fallar por errores de auditoría
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -358,7 +363,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE VIEW user_accessible_children AS
 SELECT 
   c.*,
-  'parent'::TEXT as relationship_type,
+  :DEFAULT_ROLE::TEXT as relationship_type,
   true as can_edit,
   true as can_view,
   true as can_export,
@@ -385,7 +390,7 @@ SELECT
   COUNT(CASE WHEN dl.is_private THEN 1 END) as private_logs,
   COUNT(CASE WHEN dl.reviewed_at IS NOT NULL THEN 1 END) as reviewed_logs
 FROM children c
-LEFT JOIN daily_logs dl ON c.id = dl.child_id AND dl.is_deleted = false
+LEFT JOIN daily_logs dl ON c.id = dl.child_id AND dl.NOT is_deleted
 WHERE c.created_by = auth.uid()
 GROUP BY c.id, c.name;
 
@@ -504,15 +509,15 @@ BEGIN
   -- Contar tablas
   SELECT COUNT(*) INTO table_count
   FROM information_schema.tables 
-  WHERE table_schema = 'public' 
-    AND table_name IN ('profiles', 'children', 'user_child_relations', 'daily_logs', 'categories', 'audit_logs');
+  WHERE table_schema = :PUBLIC_SCHEMA 
+    AND table_name IN (:PROFILES, :CHILDREN, :USER_CHILD_RELATIONS, :DAILY_LOGS, :CATEGORIES, :AUDIT_LOGS);
   
   result := result || 'Tablas creadas: ' || table_count || '/6' || E'\n';
   
   -- Contar políticas
   SELECT COUNT(*) INTO policy_count
   FROM pg_policies 
-  WHERE schemaname = 'public';
+  WHERE schemaname = :PUBLIC_SCHEMA;
   
   result := result || 'Políticas RLS: ' || policy_count || E'\n';
   
@@ -532,9 +537,9 @@ BEGIN
   -- Verificar RLS
   IF (SELECT COUNT(*) FROM pg_class c 
       JOIN pg_namespace n ON n.oid = c.relnamespace 
-      WHERE n.nspname = 'public' 
-        AND c.relname = 'children' 
-        AND c.relrowsecurity = true) > 0 THEN
+      WHERE n.nspname = :PUBLIC_SCHEMA 
+        AND c.relname = :CHILDREN 
+        AND c.relrowsecurity) > 0 THEN
     result := result || 'RLS: ✅ Habilitado' || E'\n';
   ELSE
     result := result || 'RLS: ❌ Deshabilitado' || E'\n';
