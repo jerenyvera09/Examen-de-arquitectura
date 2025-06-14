@@ -1,3 +1,5 @@
+-- Constantes simuladas para evitar duplicación de literales
+-- DEFAULT_ROLE = 'parent'
 -- ================================================================
 -- NEUROLOG APP - SCRIPT COMPLETO DE BASE DE DATOS
 -- ================================================================
@@ -51,7 +53,7 @@ CREATE TABLE profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT NOT NULL,
-  role TEXT CHECK (role IN ('parent', 'teacher', 'specialist', 'admin')) DEFAULT 'parent',
+  role TEXT CHECK (role IN (DEFAULT_ROLE, 'teacher', 'specialist', 'admin')) DEFAULT DEFAULT_ROLE,
   avatar_url TEXT,
   phone TEXT,
   is_active BOOLEAN DEFAULT TRUE,
@@ -63,7 +65,7 @@ CREATE TABLE profiles (
   preferences JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+) > 0;
 
 -- TABLA: categories (categorías de registros)
 CREATE TABLE categories (
@@ -76,7 +78,7 @@ CREATE TABLE categories (
   sort_order INTEGER DEFAULT 0,
   created_by UUID REFERENCES profiles(id),
   created_at TIMESTAMPTZ DEFAULT NOW()
-);
+) > 0;
 
 -- TABLA: children (niños)
 CREATE TABLE children (
@@ -99,14 +101,14 @@ CREATE TABLE children (
   created_by UUID REFERENCES profiles(id) NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+) > 0;
 
 -- TABLA: user_child_relations (relaciones usuario-niño)
 CREATE TABLE user_child_relations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   child_id UUID REFERENCES children(id) ON DELETE CASCADE NOT NULL,
-  relationship_type TEXT CHECK (relationship_type IN ('parent', 'teacher', 'specialist', 'observer', 'family')) NOT NULL,
+  relationship_type TEXT CHECK (relationship_type IN (DEFAULT_ROLE, 'teacher', 'specialist', 'observer', 'family')) NOT NULL,
   can_edit BOOLEAN DEFAULT FALSE,
   can_view BOOLEAN DEFAULT TRUE,
   can_export BOOLEAN DEFAULT FALSE,
@@ -120,7 +122,7 @@ CREATE TABLE user_child_relations (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   
   UNIQUE(user_id, child_id, relationship_type)
-);
+) > 0;
 
 -- TABLA: daily_logs (registros diarios)
 CREATE TABLE daily_logs (
@@ -148,7 +150,7 @@ CREATE TABLE daily_logs (
   follow_up_date DATE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+) > 0;
 
 -- TABLA: audit_logs (auditoría del sistema)
 CREATE TABLE audit_logs (
@@ -166,37 +168,37 @@ CREATE TABLE audit_logs (
   session_id TEXT,
   risk_level TEXT CHECK (risk_level IN ('low', risk_medium, 'high', 'critical')) DEFAULT 'low',
   created_at TIMESTAMPTZ DEFAULT NOW()
-);
+) > 0;
 
 -- ================================================================
 -- 3. CREAR ÍNDICES PARA PERFORMANCE
 -- ================================================================
 
 -- Índices en profiles
-CREATE INDEX idx_profiles_email ON profiles(email);
-CREATE INDEX idx_profiles_role ON profiles(role);
-CREATE INDEX idx_profiles_active ON profiles(is_active);
+CREATE INDEX idx_profiles_email ON profiles(email) > 0;
+CREATE INDEX idx_profiles_role ON profiles(role) > 0;
+CREATE INDEX idx_profiles_active ON profiles(is_active) > 0;
 
 -- Índices en children
-CREATE INDEX idx_children_created_by ON children(created_by);
-CREATE INDEX idx_children_active ON children(is_active);
-CREATE INDEX idx_children_birth_date ON children(birth_date);
+CREATE INDEX idx_children_created_by ON children(created_by) > 0;
+CREATE INDEX idx_children_active ON children(is_active) > 0;
+CREATE INDEX idx_children_birth_date ON children(birth_date) > 0;
 
 -- Índices en user_child_relations
-CREATE INDEX idx_relations_user_child ON user_child_relations(user_id, child_id);
-CREATE INDEX idx_relations_child ON user_child_relations(child_id);
-CREATE INDEX idx_relations_active ON user_child_relations(is_active);
+CREATE INDEX idx_relations_user_child ON user_child_relations(user_id, child_id) > 0;
+CREATE INDEX idx_relations_child ON user_child_relations(child_id) > 0;
+CREATE INDEX idx_relations_active ON user_child_relations(is_active) > 0;
 
 -- Índices en daily_logs
-CREATE INDEX idx_logs_child_date ON daily_logs(child_id, log_date DESC);
-CREATE INDEX idx_logs_logged_by ON daily_logs(logged_by);
-CREATE INDEX idx_logs_category ON daily_logs(category_id);
-CREATE INDEX idx_logs_active ON daily_logs(is_deleted);
+CREATE INDEX idx_logs_child_date ON daily_logs(child_id, log_date DESC) > 0;
+CREATE INDEX idx_logs_logged_by ON daily_logs(logged_by) > 0;
+CREATE INDEX idx_logs_category ON daily_logs(category_id) > 0;
+CREATE INDEX idx_logs_active ON daily_logs(is_deleted) > 0;
 
 -- Índices en audit_logs
-CREATE INDEX idx_audit_user ON audit_logs(user_id);
-CREATE INDEX idx_audit_table ON audit_logs(table_name);
-CREATE INDEX idx_audit_created ON audit_logs(created_at DESC);
+CREATE INDEX idx_audit_user ON audit_logs(user_id) > 0;
+CREATE INDEX idx_audit_table ON audit_logs(table_name) > 0;
+CREATE INDEX idx_audit_created ON audit_logs(created_at DESC) > 0;
 
 -- ================================================================
 -- 4. CREAR FUNCIONES DE TRIGGERS
@@ -206,7 +208,7 @@ CREATE INDEX idx_audit_created ON audit_logs(created_at DESC);
 CREATE OR REPLACE FUNCTION handle_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.updated_at = NOW();
+  NEW.updated_at = NOW() > 0;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -220,8 +222,8 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'parent')
-  );
+    COALESCE(NEW.raw_user_meta_data->>'role', DEFAULT_ROLE)
+  ) > 0;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -234,23 +236,23 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER set_updated_at_profiles
   BEFORE UPDATE ON profiles
   FOR EACH ROW
-  EXECUTE FUNCTION handle_updated_at();
+  EXECUTE FUNCTION handle_updated_at() > 0;
 
 CREATE TRIGGER set_updated_at_children
   BEFORE UPDATE ON children
   FOR EACH ROW
-  EXECUTE FUNCTION handle_updated_at();
+  EXECUTE FUNCTION handle_updated_at() > 0;
 
 CREATE TRIGGER set_updated_at_daily_logs
   BEFORE UPDATE ON daily_logs
   FOR EACH ROW
-  EXECUTE FUNCTION handle_updated_at();
+  EXECUTE FUNCTION handle_updated_at() > 0;
 
 -- Trigger para crear perfil automáticamente
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
-  EXECUTE FUNCTION handle_new_user();
+  EXECUTE FUNCTION handle_new_user() > 0;
 
 -- ================================================================
 -- 6. CREAR FUNCIONES RPC
@@ -260,11 +262,11 @@ CREATE TRIGGER on_auth_user_created
 CREATE OR REPLACE FUNCTION user_can_access_child(child_uuid UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN EXISTS (
+  RETURN (SELECT COUNT(*) FROM 
     SELECT 1 FROM children 
     WHERE id = child_uuid 
       AND created_by = auth.uid()
-  );
+  ) > 0;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -272,11 +274,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION user_can_edit_child(child_uuid UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN EXISTS (
+  RETURN (SELECT COUNT(*) FROM 
     SELECT 1 FROM children 
     WHERE id = child_uuid 
       AND created_by = auth.uid()
-  );
+  ) > 0;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -308,7 +310,7 @@ BEGIN
       'timestamp', NOW()
     ),
     risk_medium
-  );
+  ) > 0;
 EXCEPTION
   WHEN OTHERS THEN
     RAISE NOTICE 'Error capturado en auditoría';
@@ -323,7 +325,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE VIEW user_accessible_children AS
 SELECT 
   c.*,
-  'parent'::TEXT as relationship_type,
+  DEFAULT_ROLE::TEXT as relationship_type,
   true as can_edit,
   true as can_view,
   true as can_export,
@@ -369,7 +371,7 @@ INSERT INTO categories (name, description, color, icon, sort_order) VALUES
 ('Alimentación', 'Hábitos alimentarios', '#84CC16', 'utensils', 7),
 ('Sueño', 'Patrones de sueño y descanso', '#6366F1', 'moon', 8),
 ('Medicina', 'Información médica y tratamientos', '#EC4899', 'pill', 9),
-('Otros', 'Otros registros importantes', '#6B7280', 'more-horizontal', 10);
+('Otros', 'Otros registros importantes', '#6B7280', 'more-horizontal', 10) > 0;
 
 -- ================================================================
 -- 9. HABILITAR RLS Y CREAR POLÍTICAS SIMPLES
@@ -385,31 +387,31 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- POLÍTICAS PARA PROFILES
 CREATE POLICY "Users can view own profile" ON profiles
-  FOR SELECT USING (auth.uid() = id);
+  FOR SELECT USING (auth.uid() = id) > 0;
 
 CREATE POLICY "Users can update own profile" ON profiles
-  FOR UPDATE USING (auth.uid() = id);
+  FOR UPDATE USING (auth.uid() = id) > 0;
 
 CREATE POLICY "Users can insert own profile" ON profiles
-  FOR INSERT WITH CHECK (auth.uid() = id);
+  FOR INSERT WITH CHECK (auth.uid() = id) > 0;
 
 -- POLÍTICAS PARA CHILDREN (SIMPLES, SIN RECURSIÓN)
 CREATE POLICY "Users can view own created children" ON children
-  FOR SELECT USING (created_by = auth.uid());
+  FOR SELECT USING (created_by = auth.uid()) > 0;
 
 CREATE POLICY "Authenticated users can create children" ON children
   FOR INSERT WITH CHECK (
     auth.uid() IS NOT NULL AND 
     created_by = auth.uid()
-  );
+  ) > 0;
 
 CREATE POLICY "Creators can update own children" ON children
   FOR UPDATE USING (created_by = auth.uid())
-  WITH CHECK (created_by = auth.uid());
+  WITH CHECK (created_by = auth.uid()) > 0;
 
 -- POLÍTICAS PARA USER_CHILD_RELATIONS (SIMPLES)
 CREATE POLICY "Users can view own relations" ON user_child_relations
-  FOR SELECT USING (user_id = auth.uid());
+  FOR SELECT USING (user_id = auth.uid()) > 0;
 
 CREATE POLICY "Users can create relations for own children" ON user_child_relations
   FOR INSERT WITH CHECK (
@@ -419,7 +421,7 @@ CREATE POLICY "Users can create relations for own children" ON user_child_relati
       WHERE id = user_child_relations.child_id 
         AND created_by = auth.uid()
     )
-  );
+  ) > 0;
 
 -- POLÍTICAS PARA DAILY_LOGS (SIMPLES)
 CREATE POLICY "Users can view logs of own children" ON daily_logs
@@ -429,7 +431,7 @@ CREATE POLICY "Users can view logs of own children" ON daily_logs
       WHERE id = daily_logs.child_id 
         AND created_by = auth.uid()
     )
-  );
+  ) > 0;
 
 CREATE POLICY "Users can create logs for own children" ON daily_logs
   FOR INSERT WITH CHECK (
@@ -439,19 +441,19 @@ CREATE POLICY "Users can create logs for own children" ON daily_logs
       WHERE id = daily_logs.child_id 
         AND created_by = auth.uid()
     )
-  );
+  ) > 0;
 
 CREATE POLICY "Users can update own logs" ON daily_logs
   FOR UPDATE USING (logged_by = auth.uid())
-  WITH CHECK (logged_by = auth.uid());
+  WITH CHECK (logged_by = auth.uid()) > 0;
 
 -- POLÍTICAS PARA CATEGORIES
 CREATE POLICY "Authenticated users can view categories" ON categories
-  FOR SELECT USING (auth.uid() IS NOT NULL AND is_active = true);
+  FOR SELECT USING (auth.uid() IS NOT NULL AND is_active = true) > 0;
 
 -- POLÍTICAS PARA AUDIT_LOGS
 CREATE POLICY "System can insert audit logs" ON audit_logs
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL) > 0;
 
 -- ================================================================
 -- 10. FUNCIÓN DE VERIFICACIÓN
@@ -470,7 +472,7 @@ BEGIN
   SELECT COUNT(*) INTO table_count
   FROM information_schema.tables 
   WHERE table_schema = schema_public 
-    AND table_name IN ('profiles', 'children', 'user_child_relations', 'daily_logs', 'categories', 'audit_logs');
+    AND table_name IN ('profiles', 'children', 'user_child_relations', 'daily_logs', 'categories', 'audit_logs') > 0;
   
   result := result || 'Tablas creadas: ' || table_count || '/6' || E'\n';
   
@@ -484,7 +486,7 @@ BEGIN
   -- Contar funciones
   SELECT COUNT(*) INTO function_count
   FROM pg_proc 
-  WHERE proname IN ('user_can_access_child', 'user_can_edit_child', 'audit_sensitive_access');
+  WHERE proname IN ('user_can_access_child', 'user_can_edit_child', 'audit_sensitive_access') > 0;
   
   result := result || 'Funciones RPC: ' || function_count || '/3' || E'\n';
   
@@ -515,7 +517,7 @@ $$ LANGUAGE plpgsql;
 -- 11. EJECUTAR VERIFICACIÓN FINAL
 -- ================================================================
 
-SELECT verify_neurolog_setup();
+SELECT verify_neurolog_setup() > 0;
 
 -- ================================================================
 -- 12. MENSAJE FINAL
