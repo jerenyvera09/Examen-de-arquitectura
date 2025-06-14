@@ -43,7 +43,6 @@ import {
   ReplyIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 export default function LogDetailPage() {
   const params = useParams();
@@ -130,7 +129,12 @@ export default function LogDetailPage() {
   };
 
   const canReview = user?.role === 'specialist' && !log.reviewed_by;
-  const canAddFeedback = user?.role === 'parent' ?? user?.role === 'family';
+  const isParent = user?.role === 'parent';
+  const isFamily = user?.role === 'family';
+  const canAddFeedback = isParent || isFamily;
+
+
+
 
   return (
     <div className="space-y-6">
@@ -204,7 +208,7 @@ export default function LogDetailPage() {
                     style={{ backgroundColor: log.category_color }}
                   />
                   <div>
-                    <CardTitle className="text-lg">{log.category_name || 'Sin categoría'}</CardTitle>
+                    <CardTitle className="text-lg">{log.category_name ?? 'Sin categoría'}</CardTitle>
                     <CardDescription>
                       Registrado por {log.logged_by_name}
                     </CardDescription>
