@@ -32,10 +32,8 @@ import {
   EyeIcon,
   UserPlusIcon,
   CalendarIcon,
-  MapPinIcon,
   HeartIcon,
   TrendingUpIcon,
-  DownloadIcon,
   UsersIcon,
   BookOpenIcon,
   RefreshCwIcon
@@ -94,7 +92,7 @@ function ChildCard({ child, onEdit, onViewDetails, onManageUsers }: ChildCardPro
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={child.avatar_url || undefined} />
+              <AvatarImage src={child.avatar_url ?? undefined} />
               <AvatarFallback className="bg-blue-100 text-blue-600">
                 {child.name.charAt(0).toUpperCase()}
               </AvatarFallback>
@@ -210,7 +208,7 @@ function FiltersCard({ filters, onFiltersChange }: FiltersCardProps) {
               <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Nombre del niño..."
-                value={filters.search || ''}
+                value={filters.search ?? ''}
                 onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
                 className="pl-10"
               />
@@ -219,7 +217,7 @@ function FiltersCard({ filters, onFiltersChange }: FiltersCardProps) {
 
           {/* Relación */}
           <Select 
-            value={filters.relationship_type || 'all'} 
+            value={filters.relationship_type ?? 'all'} 
             onValueChange={(value) => onFiltersChange({ 
               ...filters, 
               relationship_type: value === 'all' ? undefined : value as RelationshipType 
