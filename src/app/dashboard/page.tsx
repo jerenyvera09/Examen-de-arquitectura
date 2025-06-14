@@ -403,7 +403,7 @@ function RecentLogs({ logs, loading }: RecentLogsProps) {
 
 // ================================================================
 // COMPONENTE PRINCIPAL DEL DASHBOARD
-// ================================================================
+// ===============================================================
 
 export default function DashboardPage() {
   const { user } = useAuth();
