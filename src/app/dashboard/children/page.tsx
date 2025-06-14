@@ -242,12 +242,12 @@ function FiltersCard({ filters, onFiltersChange }: Readonly<FiltersCardProps>) {
           <div className="space-y-2">
          <label className="text-sm font-medium" htmlFor="maxAge">Edad máxima</label>
             <Input
-              id="maxAge"
+              id="max_age" 
               type="number"
               placeholder="Años"
               min="0"
               max="25"
-              value={filters.max_age || ''}
+              value={filters.max_age ?? ''}
               onChange={(e) =>
                 onFiltersChange({
                   ...filters,
