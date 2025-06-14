@@ -318,7 +318,7 @@ export default function ChildDetailPage() {
                     <div key={log.id} className="flex items-start space-x-3 py-3 border-b border-gray-100 last:border-0">
                       <div 
                         className="w-3 h-3 rounded-full mt-2"
-                        style={{ backgroundColor: log.category_color }}
+                        style={{ backgroundColor: log.category_color ?? '#ccc' }}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
@@ -465,7 +465,7 @@ export default function ChildDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* TODO: Implementar lista detallada de logs con filtros */}
+              {/* Implementar lista detallada de logs con filtros */}
               <p className="text-gray-500">Vista detallada de registros próximamente...</p>
             </CardContent>
           </Card>
