@@ -17,19 +17,13 @@ import {
   Users, 
   BookOpen, 
   TrendingUp, 
-  Calendar, 
   Heart,
   AlertCircle,
-  Clock,
   Eye,
   Plus,
   BarChart3,
-  Bell,
   Activity,
-  Target,
-  Award,
   ChevronRight,
-  MoreHorizontal
 } from 'lucide-react';
 import Link from 'next/link';
 import { format, isToday } from 'date-fns';
