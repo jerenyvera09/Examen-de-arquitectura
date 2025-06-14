@@ -144,32 +144,14 @@ export default function ReportsPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Niño</label>
-              <Select value={selectedChild} onValueChange={setSelectedChild}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar niño" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los niños</SelectItem>
-                  {children.map(child => (
-                    <SelectItem key={child.id} value={child.id}>
-                      {child.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-2 block">Período</label>
-              <DatePickerWithRange 
+              <label className="text-sm font-medium mb-2 block">periodo</label>
+              <DatePickerWithRange
                 date={dateRange}
                 onDateChange={setDateRange}
               />
             </div>
-
-            <div className="flex items-end">
-              <Button 
+            <div> className="filex items-end">
+              <button
                 variant="outline"
                 onClick={() => {
                   setSelectedChild('all');
@@ -177,8 +159,8 @@ export default function ReportsPage() {
                     from: subMonths(new Date(), 3),
                     to: new Date()
                   });
-                }}
-              >
+                }
+              ></button>
                 Limpiar Filtros
               </Button>
             </div>
