@@ -318,12 +318,12 @@ export default function ChildDetailPage() {
                     <div key={log.id} className="flex items-start space-x-3 py-3 border-b border-gray-100 last:border-0">
                       <div 
                         className="w-3 h-3 rounded-full mt-2"
-                        style={{ backgroundColor: log.category_color ?? '#ccc' }}
+                        style={{ backgroundColor: log.category?.color ?? '#ccc' }}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium text-gray-900 truncate">
-                            {log.category_name ?? 'Sin categoría'}
+                            {log.category?.name ?? 'Sin categoría'}
                           </p>
                           <span className="text-xs text-gray-500">
                             {format(new Date(log.created_at), 'dd MMM, HH:mm', { locale: es })}
