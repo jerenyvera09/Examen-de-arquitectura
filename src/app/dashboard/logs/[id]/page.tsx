@@ -61,7 +61,7 @@ export default function LogDetailPage() {
   useEffect(() => {
     if (logId && !loading) {
       const foundLog = getLogById(logId);
-      setLog(foundLog || null);
+      setLog(foundLog ?? null);
     }
   }, [logId, loading, getLogById]);
 
@@ -110,7 +110,7 @@ export default function LogDetailPage() {
       setIsAddingFeedback(false);
       // Refresh log data
       const updatedLog = getLogById(logId);
-      setLog(updatedLog || null);
+      setLog(updatedLog ?? null);
     } catch (error) {
       console.error('Error adding feedback:', error);
     }
@@ -123,14 +123,14 @@ export default function LogDetailPage() {
       setIsReviewing(false);
       // Refresh log data
       const updatedLog = getLogById(logId);
-      setLog(updatedLog || null);
+      setLog(updatedLog ?? null);
     } catch (error) {
       console.error('Error marking as reviewed:', error);
     }
   };
 
   const canReview = user?.role === 'specialist' && !log.reviewed_by;
-  const canAddFeedback = user?.role === 'parent' || user?.role === 'family';
+  const canAddFeedback = user?.role === 'parent' ?? user?.role === 'family';
 
   return (
     <div className="space-y-6">
@@ -339,7 +339,11 @@ export default function LogDetailPage() {
                   <Separator />
                   <div>
                     <h4 className="text-sm font-medium text-gray-900 mb-2">Revisión de especialista</h4>
+                    <label htmlFor="specialist-notes" className="text-sm font-medium">
+                      Notas del especialista
+                    </label>
                     <Textarea
+                    id="specialist-notes"
                       placeholder="Agregar notas de revisión (opcional)..."
                       value={specialistNotes}
                       onChange={(e) => setSpecialistNotes(e.target.value)}
