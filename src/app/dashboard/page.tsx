@@ -34,8 +34,8 @@ import { es } from 'date-fns/locale';
 // ================================================================
 
 interface QuickStatsProps {
-  stats: any;
-  loading: boolean;
+  readonly stats: any;
+  readonly loading: boolean;
 }
 
 interface AccessibleChildrenProps {
