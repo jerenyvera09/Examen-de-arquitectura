@@ -186,9 +186,10 @@ function ChildCard({ child, onEdit, onViewDetails, onManageUsers }: ChildCardPro
 }
 
 interface FiltersCardProps {
-  filters: ChildFilters;
-  onFiltersChange: (filters: ChildFilters) => void;
+  readonly filters: ChildFilters;
+  readonly onFiltersChange: (filters: ChildFilters) => void;
 }
+
 
 function FiltersCard({ filters, onFiltersChange }: FiltersCardProps) {
   return (
