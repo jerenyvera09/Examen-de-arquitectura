@@ -46,11 +46,12 @@ import { es } from 'date-fns/locale';
 // ================================================================
 
 interface ChildCardProps {
-  child: ChildWithRelation;
-  onEdit: (child: ChildWithRelation) => void;
-  onViewDetails: (child: ChildWithRelation) => void;
-  onManageUsers: (child: ChildWithRelation) => void;
+  readonly child: ChildWithRelation;
+  readonly onEdit: (child: ChildWithRelation) => void;
+  readonly onViewDetails: (child: ChildWithRelation) => void;
+  readonly onManageUsers: (child: ChildWithRelation) => void;
 }
+
 
 function ChildCard({ child, onEdit, onViewDetails, onManageUsers }: ChildCardProps) {
   const calculateAge = (birthDate: string) => {
@@ -191,7 +192,7 @@ interface FiltersCardProps {
 }
 
 
-function FiltersCard({ filters, onFiltersChange }: FiltersCardProps) {
+function FiltersCard({ filters, onFiltersChange }: Readonly<FiltersCardProps>) {
   return (
     <Card>
       <CardHeader>
@@ -262,7 +263,7 @@ function FiltersCard({ filters, onFiltersChange }: FiltersCardProps) {
 // COMPONENTE PRINCIPAL
 // ================================================================
 
-export default function ChildrenPage() {
+export default function ChildrenPage(): JSX.Element {
   const { user } = useAuth();
   const { children, loading, error, filterChildren } = useChildren({ 
     includeInactive: false,
