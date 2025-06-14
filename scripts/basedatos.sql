@@ -93,11 +93,12 @@ CREATE TABLE children (
   medical_info JSONB DEFAULT '{}',
   educational_info JSONB DEFAULT '{}',
   privacy_settings JSONB DEFAULT '{
-    "share_with_specialists": true,
-    "share_progress_reports": true,
-    "allow_photo_sharing": false,
-    "data_retention_months": 36
-  }',
+  "share_with_specialists": true,
+  "share_progress_reports": true,
+  "allow_photo_sharing": false,
+  "data_retention_months": 36
+}',
+
   created_by UUID REFERENCES profiles(id) NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
