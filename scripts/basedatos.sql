@@ -1,14 +1,3 @@
-
--- Declaración de constantes
-\set DAILY_LOGS :DAILY_LOGS
-\set USER_CHILD_RELATIONS :USER_CHILD_RELATIONS
-\set CHILDREN :CHILDREN
-\set PROFILES :PROFILES
-\set CATEGORIES :CATEGORIES
-\set AUDIT_LOGS :AUDIT_LOGS
-\set PUBLIC_SCHEMA :PUBLIC_SCHEMA
-\set DEFAULT_ROLE :DEFAULT_ROLE
-\set DEFAULT_INTENSITY :DEFAULT_INTENSITY
 -- ================================================================
 -- NEUROLOG APP - SCRIPT COMPLETO DE BASE DE DATOS
 -- ================================================================
@@ -20,27 +9,12 @@
 -- ================================================================
 
 -- Deshabilitar RLS temporalmente
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :DAILY_LOGS) THEN
-    EXECUTE 'ALTER TABLE daily_logs DISABLE ROW LEVEL SECURITY';
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :USER_CHILD_RELATIONS) THEN
-    EXECUTE 'ALTER TABLE user_child_relations DISABLE ROW LEVEL SECURITY';
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :CHILDREN) THEN
-    EXECUTE 'ALTER TABLE children DISABLE ROW LEVEL SECURITY';
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :PROFILES) THEN
-    EXECUTE 'ALTER TABLE profiles DISABLE ROW LEVEL SECURITY';
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :CATEGORIES) THEN
-    EXECUTE 'ALTER TABLE categories DISABLE ROW LEVEL SECURITY';
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :AUDIT_LOGS) THEN
-    EXECUTE 'ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY';
-  END IF;
-END $$;
+ALTER TABLE IF EXISTS daily_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS user_child_relations DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS children DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS categories DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS audit_logs DISABLE ROW LEVEL SECURITY;
 
 -- Eliminar vistas
 DROP VIEW IF EXISTS user_accessible_children CASCADE;
@@ -73,37 +47,23 @@ DROP TABLE IF EXISTS profiles CASCADE;
 -- ================================================================
 
 -- TABLA: profiles (usuarios del sistema)
-DO $$
-DECLARE
-  rol_default TEXT := :DEFAULT_ROLE;
-BEGIN
-  EXECUTE '
-    CREATE TABLE profiles (
-      id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      full_name TEXT NOT NULL,
-      role TEXT CHECK (role IN (' || quote_literal(rol_default) || ', ''teacher'', ''specialist'', ''admin'')) DEFAULT ' || quote_literal(rol_default) || ',
-      avatar_url TEXT,
-      phone TEXT,
-      is_active BOOLEAN DEFAULT TRUE,
-      last_login TIMESTAMPTZ,
-      failed_login_attempts INTEGER DEFAULT 0,
-      last_failed_login TIMESTAMPTZ,
-      account_locked_until TIMESTAMPTZ,
-      timezone TEXT DEFAULT ''America/Guayaquil'',
-      preferences JSONB DEFAULT ''{}'',
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW()
-    );
-  ';
-END $$;
-
-  -- Insertar rol por defecto si no existe
-  IF NOT EXISTS (SELECT 1 FROM profiles WHERE role = rol_default) THEN
-    INSERT INTO profiles (id, email, full_name, role)
-    VALUES (auth.uid(), auth.email(), auth.raw_user_meta_data->>'full_name', rol_default);
-  END IF;
-END $$;
+CREATE TABLE profiles (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  full_name TEXT NOT NULL,
+  role TEXT CHECK (role IN ('parent', 'teacher', 'specialist', 'admin')) DEFAULT 'parent',
+  avatar_url TEXT,
+  phone TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  last_login TIMESTAMPTZ,
+  failed_login_attempts INTEGER DEFAULT 0,
+  last_failed_login TIMESTAMPTZ,
+  account_locked_until TIMESTAMPTZ,
+  timezone TEXT DEFAULT 'America/Guayaquil',
+  preferences JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- TABLA: categories (categorías de registros)
 CREATE TABLE categories (
@@ -146,7 +106,7 @@ CREATE TABLE user_child_relations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   child_id UUID REFERENCES children(id) ON DELETE CASCADE NOT NULL,
-  relationship_type TEXT CHECK (relationship_type IN (:DEFAULT_ROLE, 'teacher', 'specialist', 'observer', 'family')) NOT NULL,
+  relationship_type TEXT CHECK (relationship_type IN ('parent', 'teacher', 'specialist', 'observer', 'family')) NOT NULL,
   can_edit BOOLEAN DEFAULT FALSE,
   can_view BOOLEAN DEFAULT TRUE,
   can_export BOOLEAN DEFAULT FALSE,
@@ -170,7 +130,7 @@ CREATE TABLE daily_logs (
   title TEXT NOT NULL CHECK (length(trim(title)) >= 2),
   content TEXT NOT NULL,
   mood_score INTEGER CHECK (mood_score >= 1 AND mood_score <= 10),
-  intensity_level TEXT CHECK (intensity_level IN ('low', :DEFAULT_INTENSITY, 'high')) DEFAULT :DEFAULT_INTENSITY,
+  intensity_level TEXT CHECK (intensity_level IN ('low', 'medium', 'high')) DEFAULT 'medium',
   logged_by UUID REFERENCES profiles(id) NOT NULL,
   log_date DATE DEFAULT CURRENT_DATE,
   is_private BOOLEAN DEFAULT FALSE,
@@ -204,7 +164,7 @@ CREATE TABLE audit_logs (
   ip_address INET,
   user_agent TEXT,
   session_id TEXT,
-  risk_level TEXT CHECK (risk_level IN ('low', :DEFAULT_INTENSITY, 'high', 'critical')) DEFAULT 'low',
+  risk_level TEXT CHECK (risk_level IN ('low', 'medium', 'high', 'critical')) DEFAULT 'low',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -260,7 +220,7 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-    COALESCE(NEW.raw_user_meta_data->>'role', :DEFAULT_ROLE)
+    COALESCE(NEW.raw_user_meta_data->>'role', 'parent')
   );
   RETURN NEW;
 END;
@@ -347,7 +307,7 @@ BEGIN
       'details', action_details,
       'timestamp', NOW()
     ),
-    :DEFAULT_INTENSITY
+    'medium'
   );
 EXCEPTION
   WHEN OTHERS THEN
@@ -363,7 +323,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE VIEW user_accessible_children AS
 SELECT 
   c.*,
-  :DEFAULT_ROLE::TEXT as relationship_type,
+  'parent'::TEXT as relationship_type,
   true as can_edit,
   true as can_view,
   true as can_export,
@@ -374,7 +334,7 @@ SELECT
 FROM children c
 JOIN profiles p ON c.created_by = p.id
 WHERE c.created_by = auth.uid()
-  AND c.is_active;
+  AND c.is_active = true;
 
 -- Vista para estadísticas de logs por niño
 CREATE OR REPLACE VIEW child_log_statistics AS
@@ -390,7 +350,7 @@ SELECT
   COUNT(CASE WHEN dl.is_private THEN 1 END) as private_logs,
   COUNT(CASE WHEN dl.reviewed_at IS NOT NULL THEN 1 END) as reviewed_logs
 FROM children c
-LEFT JOIN daily_logs dl ON c.id = dl.child_id AND dl.NOT is_deleted
+LEFT JOIN daily_logs dl ON c.id = dl.child_id AND dl.is_deleted = false
 WHERE c.created_by = auth.uid()
 GROUP BY c.id, c.name;
 
@@ -400,9 +360,9 @@ GROUP BY c.id, c.name;
 
 -- Categorías por defecto
 INSERT INTO categories (name, description, color, icon, sort_order) VALUES
-('Comportamiento', 'Registros sobre  comportamiento y conducta', '#3B82F6', 'user', 1),
-('Emociones', 'Estado emocional y regulacion', '#EF4444', 'heart', 2),
-('Aprendizaje', 'Procesos academico y educativo', '#10B981', 'book', 3),
+('Comportamiento', 'Registros sobre comportamiento y conducta', '#3B82F6', 'user', 1),
+('Emociones', 'Estado emocional y regulación', '#EF4444', 'heart', 2),
+('Aprendizaje', 'Progreso académico y educativo', '#10B981', 'book', 3),
 ('Socialización', 'Interacciones sociales', '#F59E0B', 'users', 4),
 ('Comunicación', 'Habilidades de comunicación', '#8B5CF6', 'message-circle', 5),
 ('Motricidad', 'Desarrollo motor fino y grueso', '#06B6D4', 'activity', 6),
@@ -487,7 +447,7 @@ CREATE POLICY "Users can update own logs" ON daily_logs
 
 -- POLÍTICAS PARA CATEGORIES
 CREATE POLICY "Authenticated users can view categories" ON categories
-  FOR SELECT USING (auth.uid() IS NOT NULL AND is_active);
+  FOR SELECT USING (auth.uid() IS NOT NULL AND is_active = true);
 
 -- POLÍTICAS PARA AUDIT_LOGS
 CREATE POLICY "System can insert audit logs" ON audit_logs
@@ -509,15 +469,15 @@ BEGIN
   -- Contar tablas
   SELECT COUNT(*) INTO table_count
   FROM information_schema.tables 
-  WHERE table_schema = :PUBLIC_SCHEMA 
-    AND table_name IN (:PROFILES, :CHILDREN, :USER_CHILD_RELATIONS, :DAILY_LOGS, :CATEGORIES, :AUDIT_LOGS);
+  WHERE table_schema = 'public' 
+    AND table_name IN ('profiles', 'children', 'user_child_relations', 'daily_logs', 'categories', 'audit_logs');
   
   result := result || 'Tablas creadas: ' || table_count || '/6' || E'\n';
   
   -- Contar políticas
   SELECT COUNT(*) INTO policy_count
   FROM pg_policies 
-  WHERE schemaname = :PUBLIC_SCHEMA;
+  WHERE schemaname = 'public';
   
   result := result || 'Políticas RLS: ' || policy_count || E'\n';
   
@@ -530,16 +490,16 @@ BEGIN
   
   -- Contar categorías
   SELECT COUNT(*) INTO category_count
-  FROM categories WHERE is_active;
+  FROM categories WHERE is_active = true;
   
   result := result || 'Categorías: ' || category_count || '/10' || E'\n';
   
   -- Verificar RLS
   IF (SELECT COUNT(*) FROM pg_class c 
       JOIN pg_namespace n ON n.oid = c.relnamespace 
-      WHERE n.nspname = :PUBLIC_SCHEMA 
-        AND c.relname = :CHILDREN 
-        AND c.relrowsecurity) > 0 THEN
+      WHERE n.nspname = 'public' 
+        AND c.relname = 'children' 
+        AND c.relrowsecurity = true) > 0 THEN
     result := result || 'RLS: ✅ Habilitado' || E'\n';
   ELSE
     result := result || 'RLS: ❌ Deshabilitado' || E'\n';
