@@ -481,7 +481,7 @@ export default function ChildDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* TODO: Implementar gráficos de progreso */}
+              {/* Hacer: Implementar gráficos de progreso */}
               <p className="text-gray-500">Gráficos de progreso próximamente...</p>
             </CardContent>
           </Card>
@@ -497,7 +497,7 @@ export default function ChildDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* TODO: Implementar gestión de equipo */}
+              {/* Hacer: Implementar gestión de equipo */}
               <p className="text-gray-500">Gestión de equipo próximamente...</p>
             </CardContent>
           </Card>
@@ -513,7 +513,7 @@ export default function ChildDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* TODO: Implementar configuración específica */}
+              {/* Hacer: Implementar configuración específica */}
               <p className="text-gray-500">Configuración específica próximamente...</p>
             </CardContent>
           </Card>
